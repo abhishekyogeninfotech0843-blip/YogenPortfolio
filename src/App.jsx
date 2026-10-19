@@ -1,8 +1,11 @@
+import { useState } from "react";
 import "./App.css";
 
-const projects = [
+const STORAGE_KEY = "yogen-portfolio-projects-v1";
+
+const initialProjects = [
   {
-    number: "01",
+    id: "seed-01",
     name: "YogenBilling",
     category: "Billing & Invoicing",
     description:
@@ -14,7 +17,7 @@ const projects = [
     github: "",
   },
   {
-    number: "02",
+    id: "seed-02",
     name: "Yogen Office OS",
     category: "Office Management",
     description:
@@ -26,7 +29,7 @@ const projects = [
     github: "",
   },
   {
-    number: "03",
+    id: "seed-03",
     name: "YogenFlow CRM",
     category: "Customer Management",
     description:
@@ -38,7 +41,7 @@ const projects = [
     github: "",
   },
   {
-    number: "04",
+    id: "seed-04",
     name: "Yogen Tools",
     category: "Online Productivity Tools",
     description:
@@ -50,7 +53,7 @@ const projects = [
     github: "",
   },
   {
-    number: "05",
+    id: "seed-05",
     name: "Wedding Invitation",
     category: "Creative Web Experience",
     description:
@@ -63,7 +66,144 @@ const projects = [
   },
 ];
 
+const emptyProjectForm = {
+  name: "",
+  category: "",
+  description: "",
+  tech: "",
+  icon: "",
+  demo: "",
+  github: "",
+};
+
+function loadProjects() {
+  try {
+    const savedProjects = window.localStorage.getItem(STORAGE_KEY);
+    if (savedProjects === null) {
+      return {
+        projects: initialProjects,
+        storageMessage: "Projects are saved in this browser.",
+      };
+    }
+
+    const parsedProjects = JSON.parse(savedProjects);
+    const isValid =
+      Array.isArray(parsedProjects) &&
+      parsedProjects.every(
+        (project) =>
+          project &&
+          typeof project.id === "string" &&
+          typeof project.name === "string" &&
+          typeof project.category === "string" &&
+          typeof project.description === "string" &&
+          Array.isArray(project.tech) &&
+          typeof project.icon === "string" &&
+          typeof project.color === "string" &&
+          typeof project.demo === "string" &&
+          typeof project.github === "string",
+      );
+
+    if (!isValid) throw new Error("Saved projects have an invalid format.");
+    return {
+      projects: parsedProjects,
+      storageMessage: "Projects are saved in this browser.",
+    };
+  } catch (error) {
+    console.error("Could not load saved portfolio projects.", error);
+    return {
+      projects: initialProjects,
+      storageMessage: "Could not load saved projects from this browser.",
+    };
+  }
+}
+
+function saveProjects(projects) {
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+    return "Projects are saved in this browser.";
+  } catch (error) {
+    console.error("Could not save portfolio projects.", error);
+    return "Could not save projects in this browser. Check your browser storage settings.";
+  }
+}
+
+function normalizeProjectUrl(value) {
+  const trimmedValue = value.trim();
+  if (!trimmedValue) return "";
+
+  const url = new URL(
+    /^https?:\/\//i.test(trimmedValue)
+      ? trimmedValue
+      : `https://${trimmedValue}`,
+  );
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    throw new Error("Project links must use http or https.");
+  }
+  return url.href;
+}
+
 function App() {
+  const [projectState, setProjectState] = useState(loadProjects);
+  const { projects, storageMessage } = projectState;
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [form, setForm] = useState(emptyProjectForm);
+  const [formError, setFormError] = useState("");
+
+  function handleAddProject(event) {
+    event.preventDefault();
+    setFormError("");
+
+    try {
+      const name = form.name.trim();
+      if (!name) {
+        setFormError("Enter a project name.");
+        return;
+      }
+
+      const demo = normalizeProjectUrl(form.demo);
+      const github = normalizeProjectUrl(form.github);
+      if (!demo && !github) {
+        setFormError("Add at least one project link or GitHub link.");
+        return;
+      }
+
+      const colors = ["purple", "blue", "green", "orange", "pink"];
+      const newProject = {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        name,
+        category: form.category.trim() || "Personal Project",
+        description: form.description.trim() || "A project built by me.",
+        tech: form.tech
+          .split(",")
+          .map((technology) => technology.trim())
+          .filter(Boolean),
+        icon: form.icon.trim() || "🚀",
+        color: colors[projects.length % colors.length],
+        demo,
+        github,
+      };
+
+      const updatedProjects = [...projects, newProject];
+      setProjectState({
+        projects: updatedProjects,
+        storageMessage: saveProjects(updatedProjects),
+      });
+      setForm(emptyProjectForm);
+      setIsFormOpen(false);
+    } catch {
+      setFormError("Enter a valid project URL (for example, https://example.com).");
+    }
+  }
+
+  function handleRemoveProject(project) {
+    if (!window.confirm(`Remove "${project.name}" from your portfolio?`)) return;
+    const updatedProjects = projects.filter((item) => item.id !== project.id);
+    setProjectState({
+      projects: updatedProjects,
+      storageMessage: saveProjects(updatedProjects),
+    });
+  }
+
   return (
     <div className="portfolio">
       <header className="navbar">
@@ -119,8 +259,8 @@ function App() {
 
             <div className="hero-stats">
               <div>
-                <strong>05</strong>
-                <span>Project Slots</span>
+                <strong>{String(projects.length).padStart(2, "0")}</strong>
+                <span>Projects</span>
               </div>
               <div>
                 <strong>React</strong>
@@ -172,7 +312,7 @@ function App() {
                 </p>
                 <p>
                   <span className="line-number">06</span> &nbsp; projects:{" "}
-                  <span className="code-orange">5</span>
+                  <span className="code-orange">{projects.length}</span>
                 </p>
                 <p>
                   <span className="line-number">07</span> {"}"};
@@ -247,54 +387,192 @@ function App() {
                 A collection of software, tools and creative web experiences.
               </p>
             </div>
-            <span className="project-count">01 — 05</span>
+            <div className="project-heading-actions">
+              <span className="project-count">
+                {projects.length} {projects.length === 1 ? "PROJECT" : "PROJECTS"}
+              </span>
+              <button
+                className="add-project-button"
+                type="button"
+                aria-expanded={isFormOpen}
+                aria-controls="add-project-form"
+                onClick={() => {
+                  setIsFormOpen((isOpen) => !isOpen);
+                  setFormError("");
+                }}
+              >
+                {isFormOpen ? "Cancel" : "+ Add project"}
+              </button>
+            </div>
           </div>
 
-          <div className="project-grid">
-            {projects.map((project) => (
-              <article className="project-card" key={project.number}>
-                <div className={`project-art ${project.color}`}>
-                  <span className="project-number">{project.number}</span>
-                  <div className="project-icon">{project.icon}</div>
-                  <span className="art-orbit"></span>
-                  <span className="art-orbit orbit-small"></span>
-                </div>
+          {isFormOpen && (
+            <form
+              className="project-form"
+              id="add-project-form"
+              onSubmit={handleAddProject}
+            >
+              <div className="project-form-heading">
+                <h3>Add a project</h3>
+                <p>Fill in the project details and add at least one working link.</p>
+              </div>
+              <div className="project-form-grid">
+                <label>
+                  Project name *
+                  <input
+                    autoComplete="off"
+                    required
+                    value={form.name}
+                    onChange={(event) =>
+                      setForm({ ...form, name: event.target.value })
+                    }
+                    placeholder="My awesome project"
+                  />
+                </label>
+                <label>
+                  Category
+                  <input
+                    value={form.category}
+                    onChange={(event) =>
+                      setForm({ ...form, category: event.target.value })
+                    }
+                    placeholder="Web app, portfolio..."
+                  />
+                </label>
+                <label className="project-form-wide">
+                  Description
+                  <textarea
+                    rows="3"
+                    value={form.description}
+                    onChange={(event) =>
+                      setForm({ ...form, description: event.target.value })
+                    }
+                    placeholder="What does your project do?"
+                  />
+                </label>
+                <label>
+                  Technologies
+                  <input
+                    value={form.tech}
+                    onChange={(event) =>
+                      setForm({ ...form, tech: event.target.value })
+                    }
+                    placeholder="React, CSS, Node.js"
+                  />
+                  <small>Separate technologies with commas.</small>
+                </label>
+                <label>
+                  Icon / emoji
+                  <input
+                    value={form.icon}
+                    onChange={(event) =>
+                      setForm({ ...form, icon: event.target.value })
+                    }
+                    placeholder="🚀"
+                  />
+                </label>
+                <label>
+                  Project link
+                  <input
+                    inputMode="url"
+                    value={form.demo}
+                    onChange={(event) =>
+                      setForm({ ...form, demo: event.target.value })
+                    }
+                    placeholder="https://your-project.com"
+                  />
+                </label>
+                <label>
+                  GitHub link
+                  <input
+                    inputMode="url"
+                    value={form.github}
+                    onChange={(event) =>
+                      setForm({ ...form, github: event.target.value })
+                    }
+                    placeholder="https://github.com/you/project"
+                  />
+                </label>
+              </div>
+              {formError && (
+                <p className="project-form-error" role="alert">
+                  {formError}
+                </p>
+              )}
+              <div className="project-form-footer">
+                <p>{storageMessage}</p>
+                <button className="primary-button" type="submit">
+                  Save project
+                </button>
+              </div>
+            </form>
+          )}
 
-                <div className="project-info">
-                  <p className="project-category">{project.category}</p>
-                  <h3>{project.name}</h3>
-                  <p className="project-description">{project.description}</p>
-
-                  <div className="tech-list">
-                    {project.tech.map((tech) => (
-                      <span key={tech}>{tech}</span>
-                    ))}
+          {projects.length > 0 ? (
+            <div className="project-grid">
+              {projects.map((project, index) => (
+                <article className="project-card" key={project.id}>
+                  <div className={`project-art ${project.color}`}>
+                    <span className="project-number">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                    <div className="project-icon">{project.icon}</div>
+                    <span className="art-orbit"></span>
+                    <span className="art-orbit orbit-small"></span>
                   </div>
 
-                  <div className="project-links">
-                    {project.demo ? (
-                      <a href={project.demo} target="_blank" rel="noreferrer">
-                        Live Demo ↗
-                      </a>
-                    ) : (
-                      <span className="coming-soon">Demo link coming soon</span>
-                    )}
+                  <div className="project-info">
+                    <p className="project-category">{project.category}</p>
+                    <h3>{project.name}</h3>
+                    <p className="project-description">{project.description}</p>
 
-                    {project.github && (
-                      <a href={project.github} target="_blank" rel="noreferrer">
-                        GitHub ↗
-                      </a>
-                    )}
+                    <div className="tech-list">
+                      {project.tech.map((tech) => (
+                        <span key={tech}>{tech}</span>
+                      ))}
+                    </div>
+
+                    <div className="project-links">
+                      {project.demo && (
+                        <a href={project.demo} target="_blank" rel="noreferrer">
+                          Live Demo ↗
+                        </a>
+                      )}
+                      {!project.demo && !project.github && (
+                        <span className="coming-soon">Demo link coming soon</span>
+                      )}
+
+                      {project.github && (
+                        <a href={project.github} target="_blank" rel="noreferrer">
+                          GitHub ↗
+                        </a>
+                      )}
+                    </div>
+                    <button
+                      className="remove-project-button"
+                      type="button"
+                      onClick={() => handleRemoveProject(project)}
+                      aria-label={`Remove ${project.name}`}
+                    >
+                      Remove project
+                    </button>
                   </div>
-                </div>
-              </article>
-            ))}
-          </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="empty-projects">
+              <span aria-hidden="true">✦</span>
+              <h3>No projects added yet</h3>
+              <p>Choose “Add project” to add your first project and its link.</p>
+            </div>
+          )}
 
-          <p className="project-note">
-            Some project descriptions represent planned work. Add your verified
-            live website and GitHub links before sharing this portfolio with
-            clients.
+          <p className="project-note" aria-live="polite">
+            Review the sample cards and remove any work you have not built.
+            {` ${storageMessage} `}
+            Changes are stored only in this browser and will not update the live
+            website for other visitors.
           </p>
         </section>
 
