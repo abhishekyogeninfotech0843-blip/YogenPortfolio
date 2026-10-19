@@ -2,6 +2,7 @@ import { useState } from "react";
 import "./App.css";
 
 const STORAGE_KEY = "yogen-portfolio-projects-v1";
+const THEME_STORAGE_KEY = "yogen-portfolio-theme-v1";
 
 const initialProjects = [
   {
@@ -127,6 +128,24 @@ function saveProjects(projects) {
   }
 }
 
+function loadTheme() {
+  try {
+    const savedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+    return savedTheme === "light" ? "light" : "dark";
+  } catch (error) {
+    console.error("Could not load the saved portfolio theme.", error);
+    return "dark";
+  }
+}
+
+function saveTheme(theme) {
+  try {
+    window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+  } catch (error) {
+    console.error("Could not save the portfolio theme.", error);
+  }
+}
+
 function normalizeProjectUrl(value) {
   const trimmedValue = value.trim();
   if (!trimmedValue) return "";
@@ -144,10 +163,17 @@ function normalizeProjectUrl(value) {
 
 function App() {
   const [projectState, setProjectState] = useState(loadProjects);
+  const [theme, setTheme] = useState(loadTheme);
   const { projects, storageMessage } = projectState;
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [form, setForm] = useState(emptyProjectForm);
   const [formError, setFormError] = useState("");
+
+  function handleThemeToggle() {
+    const nextTheme = theme === "dark" ? "light" : "dark";
+    setTheme(nextTheme);
+    saveTheme(nextTheme);
+  }
 
   function handleAddProject(event) {
     event.preventDefault();
@@ -205,7 +231,7 @@ function App() {
   }
 
   return (
-    <div className="portfolio">
+    <div className="portfolio" data-theme={theme}>
       <header className="navbar">
         <a className="logo" href="#home">
           <span className="logo-icon">Y</span>
@@ -221,9 +247,20 @@ function App() {
           <a href="#contact">Contact</a>
         </nav>
 
-        <a className="nav-button" href="#projects">
-          Explore Work ↗
-        </a>
+        <div className="navbar-actions">
+          <button
+            className="theme-toggle"
+            type="button"
+            onClick={handleThemeToggle}
+            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+            title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+          >
+            <span aria-hidden="true">{theme === "dark" ? "☀" : "☾"}</span>
+          </button>
+          <a className="nav-button" href="#projects">
+            Explore Work ↗
+          </a>
+        </div>
       </header>
 
       <main>
